@@ -1,6 +1,8 @@
-import { notFound } from 'next/navigation';
-import Image from 'next/image';
+'use client'
 import ChatContainer from '@/components/chat/ChatContainer';
+import { useSocket } from '@/libs/hooks/useSocket';
+import { useParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 // Define the type to match ChatContainer's expected props
 type MessageData = {
@@ -33,23 +35,28 @@ const mockMessages: MessageData[] = [
   },
 ];
 
-export default function ChatPage({ params }: { params: { id: string } }) {
-  const chatId = parseInt(params.id);
-  
-  // Simulate not found for invalid chat IDs
-  if (isNaN(chatId) || chatId < 1 || chatId > 5) {
-    notFound();
-  }
-  
+export default function ChatPage() {
+  const params=useParams()
+  const {id}=params;
+  const {socket,isConnected}=useSocket();
+
+  useEffect(()=>{
+    if(socket && isConnected&&id){
+      socket.emit('joinRoom',{chatId:id},(res:any)=>{
+        console.log(res);
+      })
+    }
+  },[socket,id,isConnected])
+
   return (
     <div className="flex flex-col h-full">
       {/* Chat Header */}
       <div className="px-4 py-3 bg-[#17212b] border-b border-[#0e1621] flex items-center rounded-t-md mx-2 mt-2">
         <div className="w-10 h-10 rounded-full bg-[#4082bc] flex items-center justify-center text-white font-bold mr-3">
-          {chatId}
+          {/* {id} */}
         </div>
         <div>
-          <h2 className="font-semibold text-white">User {chatId}</h2>
+          {/* <h2 className="font-semibold text-white">User {id}</h2> */}
           <p className="text-xs text-[#64b3f6]">Online</p>
         </div>
         <div className="ml-auto flex space-x-3">
@@ -72,7 +79,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
       </div>
       
       {/* Chat Content */}
-      <ChatContainer chatId={chatId} initialMessages={mockMessages} />
+      <ChatContainer chatId={'4fgkf'} initialMessages={mockMessages} />
     </div>
   );
 } 

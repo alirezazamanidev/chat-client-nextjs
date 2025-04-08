@@ -16,7 +16,7 @@ type MessageData = {
 };
 
 type ChatContainerProps = {
-  chatId: number;
+  chatId: string;
   initialMessages: MessageData[];
 };
 

@@ -17,3 +17,7 @@ export const RemoveCookie = async (key: string) => {
   const cookieStore = await cookies();
   return cookieStore.delete(key);
 };
+export const getCookie = async (key: string) => {
+  const cookieStore = await cookies();
+  return cookieStore.get(key)?.value;
+};
