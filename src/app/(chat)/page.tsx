@@ -1,8 +1,9 @@
-'use client'
+
 import Link from 'next/link';
-import { useSocket } from '@/libs/hooks/useSocket';
+
 export default function ChatHomePage() {
-    const {isConnected} = useSocket();
+   
+
   return (
     <div className="flex flex-col items-center justify-center h-full bg-[#17212b] rounded-md overflow-hidden shadow-lg m-2">
       <div className="w-24 h-24 bg-[#4082bc] rounded-full flex items-center justify-center mb-6">

@@ -65,8 +65,10 @@ export const SignUpForm = withFormik<signInFormProps, SignInFormValues>({
         },
       });
       if (response.status === 201) {
-          await SetCookie('token', response.data.jwtToken);
-          props.router.push('/');
+        localStorage.setItem('userId', response.data.userId);
+        
+        await SetCookie('token', response.data.jwtToken);
+        props.router.push('/');
       }
     } catch (error) {
       handleApiError(error);

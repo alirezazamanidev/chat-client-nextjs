@@ -35,6 +35,7 @@ export const SignInForm = withFormik<signInFormProps, SignInFormValues>({
     try {
       const res = await callApi.post('auth/signin', values);
       if (res.status === 200) {
+        localStorage.setItem('userId',res.data.userId);
         await SetCookie('token',res.data.jwtToken);
         props.router.push('/')
       }

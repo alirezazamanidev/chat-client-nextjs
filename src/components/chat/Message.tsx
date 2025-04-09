@@ -1,62 +1,56 @@
 'use client';
 
+import { Message } from "@/libs/models/message";
+import { motion } from "framer-motion";
+import { formatDistanceToNow } from 'date-fns';
+
 type MessageProps = {
-  text: string;
-  sender: 'me' | 'them';
-  time: string;
-  status?: 'sent' | 'delivered' | 'read';
-  isMedia?: boolean;
-  mediaUrl?: string;
+  message: Message
 };
 
-export default function Message({ text, sender, time, status = 'sent', isMedia, mediaUrl }: MessageProps) {
+export default function MessageLayout({ message }: MessageProps) {
+  const isMyMessage = message.senderId === localStorage.getItem('userId');
+  const formattedTime = message.created_at instanceof Date 
+    ? formatDistanceToNow(message.created_at, { addSuffix: true })
+    : formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
+  
   return (
-    <div className={`flex ${sender === 'me' ? 'justify-end' : 'justify-start'} mb-4`}>
-      {sender === 'them' && (
+    <motion.div 
+      className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'} mb-4`}
+      initial={{ opacity: 0, x: isMyMessage ? 20 : -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* {!isMyMessage && (
         <div className="w-8 h-8 rounded-full bg-[#4082bc] flex-shrink-0 flex items-center justify-center text-white font-bold mr-2">
-          {sender === 'them' ? 'T' : 'M'}
+          {message.sender.id.charAt(0).toUpperCase()}
         </div>
-      )}
+      )} */}
       
-      <div 
+      <motion.div 
         className={`max-w-[70%] rounded-lg px-4 py-2 ${
-          sender === 'me' 
+          isMyMessage 
             ? 'bg-[#2b5278] text-white' 
             : 'bg-[#182533] text-white'
-        }`}
+        } shadow-md`}
+        whileHover={{ scale: 1.02 }}
+        transition={{ type: "spring", stiffness: 400, damping: 10 }}
       >
-        {isMedia && mediaUrl && (
-          <div className="mb-2 rounded overflow-hidden">
-            <img src={mediaUrl} alt="Media" className="w-full h-auto" />
-          </div>
-        )}
         
-        <p>{text}</p>
+        <p className="break-words">{message.text}</p>
         
-        <div className={`text-xs mt-1 flex items-center ${sender === 'me' ? 'justify-end text-gray-300' : 'justify-start text-gray-400'}`}>
-          {time}
+        <div className={`text-xs mt-1 flex items-center ${isMyMessage ? 'justify-end text-gray-300' : 'justify-start text-gray-400'}`}>
+          {formattedTime}
           
-          {sender === 'me' && (
+          {isMyMessage && (
             <span className="ml-1">
-              {status === 'sent' && (
-                <svg className="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-              {status === 'delivered' && (
-                <svg className="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7M5 13l4 4L19 7" />
-                </svg>
-              )}
-              {status === 'read' && (
-                <svg className="h-3 w-3 text-[#64b3f6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7M5 13l4 4L19 7" />
-                </svg>
-              )}
+              <svg className="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
             </span>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 } 

@@ -1,85 +1,167 @@
-'use client'
+'use client';
 import ChatContainer from '@/components/chat/ChatContainer';
-import { useSocket } from '@/libs/hooks/useSocket';
+
+import { useState, useEffect } from 'react';
+import { Chat } from '@/libs/models/chat';
 import { useParams } from 'next/navigation';
-import { useEffect } from 'react';
-
-// Define the type to match ChatContainer's expected props
-type MessageData = {
-  id: number;
-  text: string;
-  sender: 'me' | 'them';
-  time: string;
-  status: 'sent' | 'delivered' | 'read';
-  isMedia?: boolean;
-  mediaUrl?: string;
-};
-
-// Mock data for messages with proper type annotation
-const mockMessages: MessageData[] = [
-  { id: 1, text: 'Hello! How are you?', sender: 'them', time: '14:22', status: 'read' },
-  { id: 2, text: 'Hi, I\'m good thanks. How about you?', sender: 'me', time: '14:23', status: 'read' },
-  { id: 3, text: 'Doing well, thanks. What\'s new?', sender: 'them', time: '14:24', status: 'read' },
-  { id: 4, text: 'Not much, just working on some projects. How about you?', sender: 'me', time: '14:25', status: 'read' },
-  { id: 5, text: 'Same here. By the way, did you see the new app?', sender: 'them', time: '14:30', status: 'read' },
-  { id: 6, text: 'Yes, it\'s really cool! You should try it too.', sender: 'me', time: '14:32', status: 'delivered' },
-  { id: 7, text: 'Thanks for the suggestion, I\'ll check it out!', sender: 'them', time: '14:35', status: 'sent' },
-  { 
-    id: 8, 
-    text: 'Here\'s a beautiful view I saw yesterday', 
-    sender: 'me', 
-    time: '14:40', 
-    status: 'sent',
-    isMedia: true,
-    mediaUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=60'
-  },
-];
+import { Message } from '@/libs/models/message';
+import Image from 'next/image';
+import { formatImageUrl } from '@/libs/utils/functions';
+import { useSocket } from '@/libs/hooks/useSocket';
 
 export default function ChatPage() {
-  const params=useParams()
-  const {id}=params;
-  const {socket,isConnected}=useSocket();
+  const params = useParams();
+  const [loading, setLoading] = useState(false);
+  const [chat, setChat] = useState<Chat>();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const { id } = params;
+  const { socket, isConnected } = useSocket();
 
-  useEffect(()=>{
-    if(socket && isConnected&&id){
-      socket.emit('joinRoom',{chatId:id},(res:any)=>{
-        console.log(res);
-      })
-    }
-  },[socket,id,isConnected])
+  useEffect(() => {
+    setLoading(true);
+
+    // Join the chat room
+    socket?.emit('joinRoom', { roomId: id }, (chatData: Chat) => {
+      setChat(chatData);
+      console.log(chatData);
+      
+      setLoading(false);
+    });
+   
+    socket?.on('messages',(messagesData:Message[])=>{
+ 
+      setMessages(messagesData);
+    })
+    // socket?.on('userStatusChange', (data: any) => {
+    //   setChat((prevChat) => {
+    //     if (!prevChat) return prevChat;
+
+    //     if (prevChat.receiver.id === data.userId) {
+    //       return {
+    //         ...prevChat,
+    //         receiver: {
+    //           ...prevChat.receiver,
+    //           isOnline: data.isOnline,
+    //         },
+    //       };
+    //     }
+    //     return prevChat;
+    //   });
+    // });
+    // // Listen for message status updates
+    // socket.on('messageStatusUpdate', ({ messageId, isRead }: { messageId: string, isRead: boolean }) => {
+    //   setMessages(prev =>
+    //     prev.map(msg =>
+    //       msg.id === messageId ? { ...msg, isRead } : msg
+    //     )
+    //   );
+    // });
+
+    // Cleanup function
+    return () => {
+      socket?.off('messages');
+      // socket.off('messageStatusUpdate');
+      socket?.emit('leaveRoom', { roomId: id });
+    };
+  }, [socket, id, isConnected]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6ab2f2]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
       {/* Chat Header */}
-      <div className="px-4 py-3 bg-[#17212b] border-b border-[#0e1621] flex items-center rounded-t-md mx-2 mt-2">
-        <div className="w-10 h-10 rounded-full bg-[#4082bc] flex items-center justify-center text-white font-bold mr-3">
-          {/* {id} */}
+      {/* <div className="px-4 py-3 bg-[#17212b] border-b border-[#0e1621] flex items-center rounded-t-md mx-2 mt-2">
+        <div className="relative">
+          {chat?.receiver.avatar ? (
+            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 mr-3 border-2 border-[#4082bc] shadow-lg transform hover:scale-105 transition-transform duration-300">
+              <Image
+                width={48}
+                height={48}
+                alt={chat.receiver.username}
+                src={formatImageUrl(chat.receiver.avatar)}
+                className="object-cover w-full h-full"
+              />
+              {chat?.receiver?.isOnline && (
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
+              )}
+            </div>
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#4082bc] to-[#2b5278] flex-shrink-0 flex items-center justify-center text-white font-bold mr-3 shadow-lg transform hover:scale-105 transition-transform duration-300">
+              {chat?.receiver?.username?.charAt(0).toUpperCase()}
+              {chat?.receiver?.isOnline && (
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
+              )}
+            </div>
+          )}
         </div>
         <div>
-          {/* <h2 className="font-semibold text-white">User {id}</h2> */}
-          <p className="text-xs text-[#64b3f6]">Online</p>
+          <h2 className="font-semibold text-white">
+            {chat?.receiver?.fullName || 'User'}
+          </h2>
+          <p className="text-xs text-[#64b3f6]">
+            {chat?.receiver?.isOnline ? 'Online' : 'Offline'}
+          </p>
         </div>
         <div className="ml-auto flex space-x-3">
-          <button className="p-2 rounded-full hover:bg-[#242f3d]">
-            <svg className="h-5 w-5 text-[#6ab2f2]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200">
+            <svg
+              className="h-5 w-5 text-[#6ab2f2]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </button>
-          <button className="p-2 rounded-full hover:bg-[#242f3d]">
-            <svg className="h-5 w-5 text-[#6ab2f2]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200">
+            <svg
+              className="h-5 w-5 text-[#6ab2f2]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+              />
             </svg>
           </button>
-          <button className="p-2 rounded-full hover:bg-[#242f3d]">
-            <svg className="h-5 w-5 text-[#6ab2f2]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200">
+            <svg
+              className="h-5 w-5 text-[#6ab2f2]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+              />
             </svg>
           </button>
         </div>
-      </div>
-      
+      </div> */}
+
       {/* Chat Content */}
-      <ChatContainer chatId={'4fgkf'} initialMessages={mockMessages} />
+      <ChatContainer chatId={chat?.id || ''} initMessages={messages} />
     </div>
   );
-} 
+}
