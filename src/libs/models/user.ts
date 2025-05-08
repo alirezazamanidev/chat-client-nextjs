@@ -6,4 +6,5 @@ export interface User{
     created_at:string
     avatar:string
     isOnline:boolean
+    lastSeen:Date
 }

@@ -1,115 +1,153 @@
 'use client';
-import ChatContainer from '@/components/chat/ChatContainer';
-
-import { useState, useEffect } from 'react';
-import { Chat } from '@/libs/models/chat';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Message } from '@/libs/models/message';
 import Image from 'next/image';
-import { formatImageUrl } from '@/libs/utils/functions';
+
+import ChatContainer from '@/components/chat/ChatContainer';
+import { Chat, ChatTypeEnum } from '@/libs/models/chat';
+import { Message } from '@/libs/models/message';
+import { formatDateNow, formatImageUrl } from '@/libs/utils/functions';
 import { useSocket } from '@/libs/hooks/useSocket';
 
 export default function ChatPage() {
   const params = useParams();
-  const [loading, setLoading] = useState(false);
-  const [chat, setChat] = useState<Chat>();
-  const [messages, setMessages] = useState<Message[]>([]);
   const { id } = params;
   const { socket, isConnected } = useSocket();
+  const [chat, setChat] = useState<Chat | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+useEffect(()=>{
+  if(!socket) return;
+socket?.emit('joinRoom',{reciverId:id},(chat:Chat)=>{
 
-  useEffect(() => {
-    setLoading(true);
+  setChat(chat);
+  setLoading(false)
 
-    // Join the chat room
-    socket?.emit('joinRoom', { roomId: id }, (chatData: Chat) => {
-      setChat(chatData);
-      console.log(chatData);
-      
-      setLoading(false);
-    });
-   
-    socket?.on('messages',(messagesData:Message[])=>{
- 
-      setMessages(messagesData);
-    })
-    // socket?.on('userStatusChange', (data: any) => {
-    //   setChat((prevChat) => {
-    //     if (!prevChat) return prevChat;
+});
+socket?.on('userOnline',(data:any)=>{
+  if(data.userId === chat?.receiver?.id){
+    setChat((prevChat)=>prevChat ? {...prevChat,receiver:{...prevChat.receiver,...data}} : null);
+  }
+});
+return ()=>{
+  socket?.emit('leaveRoom',{roomId:chat?.id});
+  
+  socket?.off('userOnline');
+}
+},[id,socket]);
+useEffect(()=>{
+  if(!socket) return;
+  socket?.on('messages',(messages:Message[])=>{
+    setMessages(messages);
 
-    //     if (prevChat.receiver.id === data.userId) {
-    //       return {
-    //         ...prevChat,
-    //         receiver: {
-    //           ...prevChat.receiver,
-    //           isOnline: data.isOnline,
-    //         },
-    //       };
-    //     }
-    //     return prevChat;
-    //   });
-    // });
-    // // Listen for message status updates
-    // socket.on('messageStatusUpdate', ({ messageId, isRead }: { messageId: string, isRead: boolean }) => {
-    //   setMessages(prev =>
-    //     prev.map(msg =>
-    //       msg.id === messageId ? { ...msg, isRead } : msg
-    //     )
-    //   );
-    // });
-
-    // Cleanup function
-    return () => {
+    return ()=>{
       socket?.off('messages');
-      // socket.off('messageStatusUpdate');
-      socket?.emit('leaveRoom', { roomId: id });
-    };
-  }, [socket, id, isConnected]);
+    }
+  });
+ 
+  return ()=>{
+    socket?.off('messages');
+  }
+},[socket]);
+  // Memorized avatar component to prevent re-renders
+  const ChatAvatar = useMemo(() => {
+      if (!chat) return null;
+      
+   
+    return (
+      <div className="relative">
+        {chat.type === ChatTypeEnum.PV && chat.receiver?.avatar ? (
+          <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 mr-3 border-2 border-[#4082bc] shadow-lg transform hover:scale-105 transition-transform duration-300">
+            <Image
+              width={48}
+              height={48}
+              alt={chat.receiver.username}
+              src={formatImageUrl(chat.receiver.avatar)}
+              className="object-cover w-full h-full"
+            />
+            
+          </div>
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#4082bc] to-[#2b5278] flex-shrink-0 flex items-center justify-center text-white font-bold mr-3 shadow-lg transform hover:scale-105 transition-transform duration-300">
+            {chat.receiver?.username?.charAt(0).toUpperCase()}
+            {chat.receiver?.isOnline && (
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }, [chat]);
 
+  // Loading state with animation
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6ab2f2]"></div>
+      <div className="flex items-center justify-center h-full bg-[#0e1621]">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6ab2f2]"></div>
+          <p className="text-[#6ab2f2] mt-4">Loading chat...</p>
+        </div>
       </div>
     );
   }
 
+  // // Error state
+  // if (error) {
+  //   return (
+  //     <div className="flex items-center justify-center h-full bg-[#0e1621]">
+  //       <div className="bg-[#17212b] p-6 rounded-lg shadow-lg max-w-md w-full">
+  //         <h2 className="text-red-500 text-xl font-bold mb-2">Error</h2>
+  //         <p className="text-white mb-4">{error}</p>
+  //         <button 
+  //           onClick={() => window.location.reload()}
+  //           className="bg-[#4082bc] hover:bg-[#5294d2] text-white py-2 px-4 rounded transition-colors duration-300"
+  //         >
+  //           Try Again
+  //         </button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // // No chat data
+  // if (!chat) {
+  //   return (
+  //     <div className="flex items-center justify-center h-full bg-[#0e1621]">
+  //       <div className="bg-[#17212b] p-6 rounded-lg shadow-lg max-w-md text-center">
+  //         <svg className="w-16 h-16 text-[#6ab2f2] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  //           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  //         </svg>
+  //         <h2 className="text-white text-xl font-bold">Chat Not Found</h2>
+  //         <p className="text-gray-400 mt-2">The chat you're looking for doesn't exist or isn't available.</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#0e1621] rounded-md shadow-lg overflow-hidden">
       {/* Chat Header */}
-      {/* <div className="px-4 py-3 bg-[#17212b] border-b border-[#0e1621] flex items-center rounded-t-md mx-2 mt-2">
-        <div className="relative">
-          {chat?.receiver.avatar ? (
-            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 mr-3 border-2 border-[#4082bc] shadow-lg transform hover:scale-105 transition-transform duration-300">
-              <Image
-                width={48}
-                height={48}
-                alt={chat.receiver.username}
-                src={formatImageUrl(chat.receiver.avatar)}
-                className="object-cover w-full h-full"
-              />
-              {chat?.receiver?.isOnline && (
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
-              )}
-            </div>
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#4082bc] to-[#2b5278] flex-shrink-0 flex items-center justify-center text-white font-bold mr-3 shadow-lg transform hover:scale-105 transition-transform duration-300">
-              {chat?.receiver?.username?.charAt(0).toUpperCase()}
-              {chat?.receiver?.isOnline && (
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
-              )}
-            </div>
-          )}
-        </div>
-        <div>
-          <h2 className="font-semibold text-white">
-            {chat?.receiver?.fullName || 'User'}
+      <div className="px-4 py-3 bg-[#17212b] border-b border-[#0e1621] flex items-center sticky top-0 z-10 shadow-md">
+        {ChatAvatar}
+        
+        <div className="overflow-hidden">
+          <h2 className="font-semibold text-white truncate">
+            {chat?.type === ChatTypeEnum.PV
+              ? chat?.receiver?.fullName
+              : chat?.name}
           </h2>
-          <p className="text-xs text-[#64b3f6]">
-            {chat?.receiver?.isOnline ? 'Online' : 'Offline'}
+          <p className={`text-xs ${chat?.type === ChatTypeEnum.PV && chat?.receiver?.isOnline ? 'text-[#64b3f6]' : 'text-gray-400'} truncate`}>
+            {chat?.type === ChatTypeEnum.PV && (
+              chat?.receiver?.isOnline 
+                ? 'Online' 
+                : formatDateNow(chat?.receiver?.lastSeen)
+            )}
           </p>
         </div>
-        <div className="ml-auto flex space-x-3">
-          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200">
+        
+        <div className="ml-auto flex space-x-2">
+          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#6ab2f2] focus:ring-opacity-50">
             <svg
               className="h-5 w-5 text-[#6ab2f2]"
               fill="none"
@@ -125,7 +163,7 @@ export default function ChatPage() {
               />
             </svg>
           </button>
-          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200">
+          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#6ab2f2] focus:ring-opacity-50">
             <svg
               className="h-5 w-5 text-[#6ab2f2]"
               fill="none"
@@ -141,7 +179,7 @@ export default function ChatPage() {
               />
             </svg>
           </button>
-          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200">
+          <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#6ab2f2] focus:ring-opacity-50">
             <svg
               className="h-5 w-5 text-[#6ab2f2]"
               fill="none"
@@ -158,10 +196,13 @@ export default function ChatPage() {
             </svg>
           </button>
         </div>
-      </div> */}
+      </div>
 
       {/* Chat Content */}
-      <ChatContainer chatId={chat?.id || ''} initMessages={messages} />
+      <ChatContainer 
+        chatId={chat?.id || ''} 
+        initMessages={messages}
+      />
     </div>
   );
 }

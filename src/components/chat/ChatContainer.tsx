@@ -5,7 +5,6 @@ import MessageLayout from './Message';
 import MessageInput from './MessageInput';
 import { Message } from '@/libs/models/message';
 import { useSocket } from '@/libs/hooks/useSocket';
-
 interface ChatContainerProps {
   chatId: string;
   initMessages: Message[];
@@ -34,7 +33,6 @@ export default function ChatContainer({ chatId, initMessages }: ChatContainerPro
     if (!socket || !isConnected) return;
     
     const handleNewMessage = (msg: Message) => {
-      console.log(msg);
       
       setMessages(prevMessages => [...prevMessages, msg]);
     };
@@ -45,7 +43,6 @@ export default function ChatContainer({ chatId, initMessages }: ChatContainerPro
       socket.off('newMessage', handleNewMessage);
     };
   }, [socket, isConnected]);
-
   return (
     <div className="flex flex-col h-full bg-[#0e1621] rounded-md overflow-hidden shadow-lg m-2">
       {/* Messages Area */}

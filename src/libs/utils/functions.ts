@@ -1,3 +1,5 @@
+import date from 'moment-jalaali';
+
 export function formatImageUrl(imagePath?: string, defaultImage = '/images/placeholder.jpg'): string {
     if (!imagePath) return defaultImage;
     
@@ -12,4 +14,8 @@ export function formatImageUrl(imagePath?: string, defaultImage = '/images/place
     // افزودن URL استاتیک به مسیر
     const staticUrl = process.env.NEXT_PUBLIC_STREEM_URL || '';
     return `${staticUrl}/${cleanPath}`;
+  }
+
+  export const formatDateNow = (time:Date)=>{
+    return date(time).fromNow();
   }

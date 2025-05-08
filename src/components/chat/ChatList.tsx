@@ -1,7 +1,10 @@
 'use client';
 
+import { useSocket } from '@/libs/hooks/useSocket';
+import { Chat } from '@/libs/models/chat';
+import { formatDateNow } from '@/libs/utils/functions';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Mock data for chat list
 const mockChats = [
@@ -49,14 +52,25 @@ const mockChats = [
 
 export default function ChatList() {
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const {socket,isConnected}=useSocket()
+  const [chats,setChats]=useState<Chat[]>([])
   const filteredChats = searchQuery 
-    ? mockChats.filter(chat => 
+    ?   chats.filter(chat => 
         chat.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+        chat.lastMessage.text.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : mockChats;
+    : chats;
   
+
+    useEffect(()=>{
+      if(!socket) return;
+      socket.on('getAllChats',(chats:Chat[])=>{
+      console.log(chats);
+        setChats(chats);
+      })
+    },[socket])
+    
+
   return (
     <>
       {/* Search */}
@@ -93,23 +107,23 @@ export default function ChatList() {
           <div className="p-4 text-center text-gray-400">No conversations found</div>
         ) : (
           filteredChats.map((chat) => (
-            <Link href={`/chat/${chat.id}`} key={chat.id}>
+            <Link href={`/${chat.receiver.id}`} key={chat.id}>
               <div className="flex items-center p-3 border-b border-[#0e1621] hover:bg-[#242f3d] cursor-pointer">
                 <div className="relative">
                   <div className="w-12 h-12 rounded-full bg-[#4082bc] flex-shrink-0 flex items-center justify-center text-white font-bold">
-                    {chat.name.charAt(0)}
+                    {chat.receiver.fullName.charAt(0)}
                   </div>
-                  {chat.isOnline && (
+                  {chat.receiver.isOnline && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
                   )}
                 </div>
                 <div className="ml-3 flex-1 overflow-hidden">
                   <div className="flex justify-between items-center">
                     <h3 className="font-medium text-white truncate">{chat.name}</h3>
-                    <span className="text-xs text-gray-400">{chat.time}</span>
+                    <span className="text-xs text-gray-400">{formatDateNow(chat.lastMessage.created_at)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <p className="text-sm text-gray-400 truncate">{chat.lastMessage}</p>
+                    <p className="text-sm text-gray-400 truncate">{chat.lastMessage.text}</p>
                     {chat.unreadCount > 0 && (
                       <span className="bg-[#64b3f6] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                         {chat.unreadCount}

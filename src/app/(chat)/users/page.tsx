@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation';
 import { User } from '@/libs/models/user';
 import Image from 'next/image';
 import { formatImageUrl } from '@/libs/utils/functions';
-import { Chat, ChatTypeEnum } from '@/libs/models/chat';
-import { useSocket } from '@/libs/hooks/useSocket';
 
-export default function NewChatPage() {
+import { useSocket } from '@/libs/hooks/useSocket';
+import Link from 'next/link';
+
+export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,47 +26,33 @@ export default function NewChatPage() {
       )
     : users;
 
-  const handleUserClick = (userId: string) => {
-    // Navigate to chat with this user
-    socket?.emit(
-      'createRoom',
-      { members: [userId], type: ChatTypeEnum.PV },
-      (chat: Chat) => {
-        if (chat) {
-          router.push(`/${chat.id}`);
-        }
-      },
-    );
-  };
+
 
   // Fetch users when socket is connected
   useEffect(() => {
     if (!socket || !isConnected) return;
-
-    setLoading(true);
-
-    // Define event handlers
-    const handleGetAllUsers = (receivedUsers: User[]) => {
-      if (Array.isArray(receivedUsers) && receivedUsers.length > 0) {
-        setUsers(receivedUsers);
-      }
+    socket.emit('get-user-list', (usersdata:User[])=>{
+      setUsers(usersdata);
       setLoading(false);
-    };
+    });
 
-    // Register user status update handler
-    const handleUserStatusChange = (updatedUser: any) => {
-      setUsers((prevUsers) =>
+    socket.on('online-status-user',(data:{userId:string,isOnline:boolean})=>{
+      console.log(data);
+      setUsers((prevUsers) => 
         prevUsers.map((user) =>
-          user.id === updatedUser.userId ? { ...user, ...updatedUser } : user,
-        ),
+          user.id === data.userId
+            ? { ...user, isOnline: data.isOnline }
+            : user
+        )
       );
-    };
+    
+    })
 
-    socket.on('userStatusChange', handleUserStatusChange);
 
-    // Emit request to get all users
-    socket.emit('getAllUsers', handleGetAllUsers);
-  }, [socket, isConnected]);
+    return ()=>{
+      socket.off('online-status-user');
+    }
+  }, [socket, isConnected,users]);
 
   return (
     <div className="flex flex-col h-full bg-[#17212b] rounded-md overflow-hidden shadow-lg m-2">
@@ -184,10 +171,11 @@ export default function NewChatPage() {
         ) : (
           <div className="divide-y divide-[#0e1621]">
             {filteredUsers.map((user: User) => (
-              <div
+              <Link
+                href={`/${user.id}`}
                 key={user.id}
                 className="flex items-center p-3 hover:bg-[#242f3d] cursor-pointer"
-                onClick={() => handleUserClick(user.id)}
+                
               >
                 <div className="relative">
                   {user.avatar ? (
@@ -219,7 +207,7 @@ export default function NewChatPage() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
