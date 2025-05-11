@@ -46,8 +46,30 @@ export default function MessageLayout({ message }: MessageProps) {
 
           {isMyMessage && (
             <span className="ml-1">
-              <svg
-                className="h-3 w-3 text-blue-400"
+              {message.isRead ? (
+                  <svg
+                  className="h-3 w-3 text-blue-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7M5 13l4 4L19 7"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 13l4 4L22 7"
+                  />
+                </svg>
+              ):(
+                <svg
+                className="h-3 w-3 text-gray-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -57,9 +79,11 @@ export default function MessageLayout({ message }: MessageProps) {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M5 13l4 4L19 7M5 13l4 4L19 7"
+                  d="M5 13l4 4L19 7"
                 />
-              </svg>
+              </svg> 
+              )}
+            
             </span>
           )}
         </div>

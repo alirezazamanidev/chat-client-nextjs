@@ -12,8 +12,8 @@ export default function Header(){
     useEffect(()=>{
         if(!socket) return
 
-        socket.on('pvRoomInfo',(data:{reciver:User})=>{
-            setreciver(data.reciver)
+        socket.on('pvRoomInfo',(data:{receiver:User})=>{
+            setreciver(data.receiver)
         })
         
         return ()=>{

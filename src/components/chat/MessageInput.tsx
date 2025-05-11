@@ -16,7 +16,7 @@ export default function MessageInput({type}:props) {
     e.preventDefault();
     if (message.trim().length <0) return
     if(type===ChatTypeEnum.PV){
-      socket?.emit('sendMessage',{type,reciverId:id,text:message});
+      socket?.emit('sendMessage',{type,receiverId:id,text:message});
 
     }else if(type===ChatTypeEnum.GROUP){
       socket?.emit('sendMessage',{type,roomId:id,text:message});

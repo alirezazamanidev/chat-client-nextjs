@@ -6,7 +6,5 @@ export interface Message{
     senderId:string;
     sender:User
     isRead:boolean;
-    isMine:boolean
-    
     created_at:Date;
 }

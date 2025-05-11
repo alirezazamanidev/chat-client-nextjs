@@ -24,9 +24,25 @@ export default function ChatList() {
   useEffect(() => {
     if (!socket) return;
     socket.on('chatList', (chats: Chat[]) => {
-      console.log(chats);
       setChats(chats);
     });
+    socket.on('newMessage', (message) => {
+      setChats((prevChats) => {
+        const updated = [...prevChats];
+        const index = updated.findIndex((chat) => chat.id === message.roomId);
+        if (index !== -1) {
+          const chat = updated[index];
+          chat.lastMessage = message;
+          chat.unreadCount = (chat.unreadCount || 0) + 1;
+          // انتقال به بالا
+          updated.splice(index, 1);
+          return [chat, ...updated];
+        }
+        return prevChats;
+      });
+    });
+  
+
   }, [socket]);
 
   return (
