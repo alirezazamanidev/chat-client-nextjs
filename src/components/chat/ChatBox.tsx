@@ -5,24 +5,20 @@ import MessageLayout from './Message';
 import MessageInput from './MessageInput';
 import { Message } from '@/libs/models/message';
 import { useSocket } from '@/libs/hooks/useSocket';
+import { ChatTypeEnum } from '@/libs/models/chat';
 interface ChatContainerProps {
-  chatId: string;
-  initMessages: Message[];
+  roomId?: string;
+  reciverId?:string
+  type:ChatTypeEnum
+  
 }
 
-export default function ChatContainer({ chatId, initMessages }: ChatContainerProps) {
-  const [messages, setMessages] = useState<Message[]>(initMessages);
+export default function ChatBox({ type,  }: ChatContainerProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { socket, isConnected } = useSocket();
 
-  // Function to handle sending a new message
-  const handleSendMessage = useCallback((text: string) => {
-    if (!socket || !isConnected) return;
-    if (text.trim().length === 0 || !chatId) return;
-    
-    socket.emit('sendMessage', { roomId: chatId, text });
-  }, [socket, isConnected, chatId]);
- 
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -30,19 +26,24 @@ export default function ChatContainer({ chatId, initMessages }: ChatContainerPro
 
   // Handle incoming messages
   useEffect(() => {
-    if (!socket || !isConnected) return;
-    
+    if (!socket) return;
+  
     const handleNewMessage = (msg: Message) => {
-      
       setMessages(prevMessages => [...prevMessages, msg]);
     };
-    
-    socket.on('newMessage', handleNewMessage);
+    const handleMessages = (msgList: Message[]) => {
+      setMessages(msgList);
+    };
 
+    socket.on('newMessage', handleNewMessage);
+    socket.on('messages', handleMessages);
+  
     return () => {
       socket.off('newMessage', handleNewMessage);
+      socket.off('messages', handleMessages);
     };
-  }, [socket, isConnected]);
+  }, [socket]);
+  
   return (
     <div className="flex flex-col h-full bg-[#0e1621] rounded-md overflow-hidden shadow-lg m-2">
       {/* Messages Area */}
@@ -59,7 +60,7 @@ export default function ChatContainer({ chatId, initMessages }: ChatContainerPro
       </div>
       
       {/* Message Input */}
-      <MessageInput onSendMessage={handleSendMessage} />
+      <MessageInput type={type}/>
     </div>
   );
 }

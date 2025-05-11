@@ -1,21 +1,28 @@
 'use client';
 
+import { useSocket } from '@/libs/hooks/useSocket';
+import { ChatTypeEnum } from '@/libs/models/chat';
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
-type MessageInputProps = {
-  onSendMessage: (message: string) => void;
-};
+interface props {type:ChatTypeEnum}
 
-export default function MessageInput({ onSendMessage }: MessageInputProps) {
+export default function MessageInput({type}:props) {
+  const {socket}=useSocket()
   const [message, setMessage] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  
+    const params = useParams();
+    const id = String(params?.id);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
-      onSendMessage(message);
-      setMessage('');
+    if (message.trim().length <0) return
+    if(type===ChatTypeEnum.PV){
+      socket?.emit('sendMessage',{type,reciverId:id,text:message});
+
+    }else if(type===ChatTypeEnum.GROUP){
+      socket?.emit('sendMessage',{type,roomId:id,text:message});
     }
+    setMessage('')
+
   };
 
   return (
@@ -50,18 +57,7 @@ export default function MessageInput({ onSendMessage }: MessageInputProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
         </button>
-        
-        <button 
-          type="button"
-          className="p-2 rounded-full hover:bg-[#242f3d]"
-          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-          title="Add emoji"
-        >
-          <svg className="h-5 w-5 text-[#6ab2f2]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-        
+     
         <button 
           type="submit"
           className="ml-2 bg-[#2b5278] text-white p-2 rounded-full hover:bg-[#3a6999]"
@@ -74,25 +70,7 @@ export default function MessageInput({ onSendMessage }: MessageInputProps) {
         </button>
       </form>
       
-      {showEmojiPicker && (
-        <div className="absolute bottom-16 right-4 bg-[#242f3d] p-2 rounded-lg shadow-lg border border-[#0e1621]">
-          <div className="grid grid-cols-8 gap-2">
-            {['😀', '😂', '😍', '🥰', '😊', '👍', '❤️', '🎉',
-              '🔥', '🤔', '😢', '😎', '👏', '🙏', '💯', '🤝'].map((emoji) => (
-              <button
-                key={emoji}
-                className="text-2xl hover:bg-[#3a6999] p-1 rounded"
-                onClick={() => {
-                  setMessage(message + emoji);
-                  setShowEmojiPicker(false);
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+ 
     </div>
   );
 } 

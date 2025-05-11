@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 
-import ChatContainer from '@/components/chat/ChatContainer';
+import ChatContainer from '@/components/chat/ChatBox';
 import { Chat, ChatTypeEnum } from '@/libs/models/chat';
 import { Message } from '@/libs/models/message';
 import { formatDateNow, formatImageUrl } from '@/libs/utils/functions';
@@ -16,44 +16,49 @@ export default function ChatPage() {
   const [chat, setChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-useEffect(()=>{
-  if(!socket) return;
-socket?.emit('joinRoom',{reciverId:id},(chat:Chat)=>{
 
-  setChat(chat);
-  setLoading(false)
+  // هندلر دریافت چت و پیام‌ها
+  const handleJoinRoom = useCallback((chat: Chat) => {
+    setChat(chat);
+    setLoading(false);
+  }, []);
 
-});
-socket?.on('userOnline',(data:any)=>{
-  if(data.userId === chat?.receiver?.id){
-    setChat((prevChat)=>prevChat ? {...prevChat,receiver:{...prevChat.receiver,...data}} : null);
-  }
-});
-return ()=>{
-  socket?.emit('leaveRoom',{roomId:chat?.id});
-  
-  socket?.off('userOnline');
-}
-},[id,socket]);
-useEffect(()=>{
-  if(!socket) return;
-  socket?.on('messages',(messages:Message[])=>{
-    setMessages(messages);
+  // هندلر آنلاین شدن کاربر
+  const handleUserOnline = useCallback((data: any) => {
+    setChat((prevChat) =>
+      prevChat && data.userId === prevChat.receiver?.id
+        ? { ...prevChat, receiver: { ...prevChat.receiver, ...data } }
+        : prevChat,
+    );
+  }, []);
 
-    return ()=>{
-      socket?.off('messages');
-    }
-  });
- 
-  return ()=>{
-    socket?.off('messages');
-  }
-},[socket]);
+  // هندلر دریافت پیام‌ها
+  const handleMessages = useCallback((msgs: Message[]) => {
+    setMessages(msgs);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    // joinRoom
+    socket.emit('joinRoom', { reciverId: id }, handleJoinRoom);
+    // رویدادها
+    socket.on('userOnline', handleUserOnline);
+    socket.on('messages', handleMessages);
+
+    return () => {
+      if (chat?.id) {
+        socket.emit('leaveRoom', { roomId: chat.id });
+      }
+      socket.off('userOnline', handleUserOnline);
+      socket.off('messages', handleMessages);
+    };
+    // وابستگی به chat?.id برای cleanup صحیح
+  }, [id, socket, handleJoinRoom, handleUserOnline, handleMessages, chat?.id]);
+
   // Memorized avatar component to prevent re-renders
   const ChatAvatar = useMemo(() => {
-      if (!chat) return null;
-      
-   
+    if (!chat) return null;
+
     return (
       <div className="relative">
         {chat.type === ChatTypeEnum.PV && chat.receiver?.avatar ? (
@@ -65,7 +70,6 @@ useEffect(()=>{
               src={formatImageUrl(chat.receiver.avatar)}
               className="object-cover w-full h-full"
             />
-            
           </div>
         ) : (
           <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#4082bc] to-[#2b5278] flex-shrink-0 flex items-center justify-center text-white font-bold mr-3 shadow-lg transform hover:scale-105 transition-transform duration-300">
@@ -98,7 +102,7 @@ useEffect(()=>{
   //       <div className="bg-[#17212b] p-6 rounded-lg shadow-lg max-w-md w-full">
   //         <h2 className="text-red-500 text-xl font-bold mb-2">Error</h2>
   //         <p className="text-white mb-4">{error}</p>
-  //         <button 
+  //         <button
   //           onClick={() => window.location.reload()}
   //           className="bg-[#4082bc] hover:bg-[#5294d2] text-white py-2 px-4 rounded transition-colors duration-300"
   //         >
@@ -124,28 +128,32 @@ useEffect(()=>{
   //   );
   // }
 
-  
   return (
     <div className="flex flex-col h-full bg-[#0e1621] rounded-md shadow-lg overflow-hidden">
       {/* Chat Header */}
       <div className="px-4 py-3 bg-[#17212b] border-b border-[#0e1621] flex items-center sticky top-0 z-10 shadow-md">
         {ChatAvatar}
-        
+
         <div className="overflow-hidden">
           <h2 className="font-semibold text-white truncate">
             {chat?.type === ChatTypeEnum.PV
               ? chat?.receiver?.fullName
               : chat?.name}
           </h2>
-          <p className={`text-xs ${chat?.type === ChatTypeEnum.PV && chat?.receiver?.isOnline ? 'text-[#64b3f6]' : 'text-gray-400'} truncate`}>
-            {chat?.type === ChatTypeEnum.PV && (
-              chat?.receiver?.isOnline 
-                ? 'Online' 
-                : formatDateNow(chat?.receiver?.lastSeen)
-            )}
+          <p
+            className={`text-xs ${
+              chat?.type === ChatTypeEnum.PV && chat?.receiver?.isOnline
+                ? 'text-[#64b3f6]'
+                : 'text-gray-400'
+            } truncate`}
+          >
+            {chat?.type === ChatTypeEnum.PV &&
+              (chat?.receiver?.isOnline
+                ? 'Online'
+                : formatDateNow(chat?.receiver?.lastSeen))}
           </p>
         </div>
-        
+
         <div className="ml-auto flex space-x-2">
           <button className="p-2 rounded-full hover:bg-[#242f3d] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#6ab2f2] focus:ring-opacity-50">
             <svg
@@ -199,10 +207,7 @@ useEffect(()=>{
       </div>
 
       {/* Chat Content */}
-      <ChatContainer 
-        chatId={chat?.id || ''} 
-        initMessages={messages}
-      />
+      <ChatContainer chatId={chat?.id || ''} initMessages={messages} />
     </div>
   );
 }

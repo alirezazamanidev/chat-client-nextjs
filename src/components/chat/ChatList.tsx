@@ -1,79 +1,37 @@
 'use client';
 
 import { useSocket } from '@/libs/hooks/useSocket';
-import { Chat } from '@/libs/models/chat';
-import { formatDateNow } from '@/libs/utils/functions';
+import { Chat, ChatTypeEnum } from '@/libs/models/chat';
+import { formatDateNow, formatImageUrl } from '@/libs/utils/functions';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-// Mock data for chat list
-const mockChats = [
-  { 
-    id: 1, 
-    name: 'John Smith', 
-    lastMessage: 'Hey, how are you?', 
-    time: '14:22', 
-    unreadCount: 0,
-    isOnline: true 
-  },
-  { 
-    id: 2, 
-    name: 'Sarah Johnson', 
-    lastMessage: 'Did you finish the project?', 
-    time: '13:45', 
-    unreadCount: 3,
-    isOnline: true 
-  },
-  { 
-    id: 3, 
-    name: 'Michael Brown', 
-    lastMessage: 'Meeting tomorrow, don\'t forget', 
-    time: '12:30', 
-    unreadCount: 0,
-    isOnline: false 
-  },
-  { 
-    id: 4, 
-    name: 'Emily Davis', 
-    lastMessage: 'I sent the files you requested', 
-    time: '11:15', 
-    unreadCount: 0,
-    isOnline: false 
-  },
-  { 
-    id: 5, 
-    name: 'Alex Wilson', 
-    lastMessage: 'Thanks for your help', 
-    time: '10:08', 
-    unreadCount: 1,
-    isOnline: true 
-  },
-];
-
 export default function ChatList() {
   const [searchQuery, setSearchQuery] = useState('');
-  const {socket,isConnected}=useSocket()
-  const [chats,setChats]=useState<Chat[]>([])
-  const filteredChats = searchQuery 
-    ?   chats.filter(chat => 
-        chat.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        chat.lastMessage.text.toLowerCase().includes(searchQuery.toLowerCase())
+  const { socket, isConnected } = useSocket();
+  const [chats, setChats] = useState<Chat[]>([]);
+
+  const filteredChats = searchQuery
+    ? chats.filter(
+        (chat) =>
+          chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          chat.lastMessage.text.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : chats;
-  
 
-    useEffect(()=>{
-      if(!socket) return;
-      socket.on('getAllChats',(chats:Chat[])=>{
+  // دریافت چت‌ها از سرور از طریق WebSocket
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('chatList', (chats: Chat[]) => {
       console.log(chats);
-        setChats(chats);
-      })
-    },[socket])
-    
+      setChats(chats);
+    });
+  }, [socket]);
 
   return (
     <>
-      {/* Search */}
+      {/* جستجو */}
       <div className="p-4 border-b border-[#0e1621]">
         <h1 className="text-xl font-bold text-white">Chats</h1>
         <div className="mt-3 relative">
@@ -100,42 +58,66 @@ export default function ChatList() {
           </svg>
         </div>
       </div>
-      
-      {/* Chat List */}
+
+      {/* لیست چت‌ها */}
       <div className="flex-1 overflow-y-auto">
         {filteredChats.length === 0 ? (
           <div className="p-4 text-center text-gray-400">No conversations found</div>
         ) : (
-          filteredChats.map((chat) => (
-            <Link href={`/${chat.receiver.id}`} key={chat.id}>
-              <div className="flex items-center p-3 border-b border-[#0e1621] hover:bg-[#242f3d] cursor-pointer">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-[#4082bc] flex-shrink-0 flex items-center justify-center text-white font-bold">
-                    {chat.receiver.fullName.charAt(0)}
-                  </div>
-                  {chat.receiver.isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
-                  )}
-                </div>
-                <div className="ml-3 flex-1 overflow-hidden">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium text-white truncate">{chat.name}</h3>
-                    <span className="text-xs text-gray-400">{formatDateNow(chat.lastMessage.created_at)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-gray-400 truncate">{chat.lastMessage.text}</p>
-                    {chat.unreadCount > 0 && (
-                      <span className="bg-[#64b3f6] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {chat.unreadCount}
-                      </span>
+          filteredChats.map((chat) => {
+            const isPv = chat.type === ChatTypeEnum.PV;
+            const chatLink = isPv ? `/pv/${chat.reciveer.id}` : `/group/${chat.id}`;
+            const displayName = isPv ? chat.reciveer.fullName : chat.name;
+            const avatarText = isPv
+              ? chat.reciveer.fullName.charAt(0).toUpperCase()
+              : chat.name.charAt(0).toUpperCase();
+
+            return (
+              <Link href={chatLink} key={chat.id}>
+                <div className="flex items-center p-3 border-b border-[#0e1621] hover:bg-[#242f3d] cursor-pointer">
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full bg-[#4082bc] flex-shrink-0 flex items-center justify-center text-white font-bold">
+                      {isPv ? (
+                        // استفاده از تصویر پروفایل در حالت PV
+                        chat.reciveer.avatar ? (
+                          <Image
+                          width={100}
+                          height={100}
+                            src={formatImageUrl(chat.reciveer.avatar)}
+                            alt="User Avatar"
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          avatarText
+                        )
+                      ) : (
+                        avatarText
+                      )}
+                    </div>
+                    {isPv && chat.reciveer.isOnline && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
                     )}
                   </div>
+                  <div className="ml-3 flex-1 overflow-hidden">
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-medium text-white truncate">{displayName}</h3>
+                      <span className="text-xs text-gray-400">{formatDateNow(chat?.lastMessage?.created_at)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-gray-400 truncate">{chat?.lastMessage?.text}</p>
+                      {chat.unreadCount > 0 && (
+                        <span className="bg-[#64b3f6] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {chat.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))
+              </Link>
+            );
+          })
         )}
       </div>
     </>
   );
-} 
+}

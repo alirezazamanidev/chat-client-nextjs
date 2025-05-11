@@ -37,7 +37,7 @@ export default function UsersPage() {
     });
 
     socket.on('online-status-user',(data:{userId:string,isOnline:boolean})=>{
-      console.log(data);
+
       setUsers((prevUsers) => 
         prevUsers.map((user) =>
           user.id === data.userId
@@ -172,7 +172,7 @@ export default function UsersPage() {
           <div className="divide-y divide-[#0e1621]">
             {filteredUsers.map((user: User) => (
               <Link
-                href={`/${user.id}`}
+                href={`/pv/${user.id}`}
                 key={user.id}
                 className="flex items-center p-3 hover:bg-[#242f3d] cursor-pointer"
                 
