@@ -5,24 +5,17 @@ import { ChatTypeEnum } from '@/libs/models/chat';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
-interface props {type:ChatTypeEnum}
 
-export default function MessageInput({type}:props) {
+export default function MessageInput() {
   const {socket}=useSocket()
   const [message, setMessage] = useState('');
     const params = useParams();
     const id = String(params?.id);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim().length <0) return
-    if(type===ChatTypeEnum.PV){
-      socket?.emit('sendMessage',{type,receiverId:id,text:message});
-
-    }else if(type===ChatTypeEnum.GROUP){
-      socket?.emit('sendMessage',{type,roomId:id,text:message});
-    }
-    setMessage('')
-
+    if (message.trim().length < 0) return;
+    socket?.emit('sendMessage', { text: message, receiverId: id });
+    setMessage('');
   };
 
   return (

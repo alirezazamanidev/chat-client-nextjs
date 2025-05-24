@@ -10,9 +10,8 @@ export interface Chat{
     id:string;
     name:string;
     type:ChatTypeEnum
-    reciveer:User
+    receiver:User
     isActive:boolean;
-    participants:User[]
     
     lastMessage:Message
     unreadCount:number

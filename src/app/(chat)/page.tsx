@@ -18,7 +18,7 @@ export default function ChatHomePage() {
       
       <div className="mt-8 flex flex-col space-y-4">
         <Link 
-          href="/new-chat" 
+          href="/users" 
           className="bg-[#4082bc] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#3a6999] transition-colors flex items-center"
         >
           <span className="mr-2">Start New Chat</span>

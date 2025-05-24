@@ -23,28 +23,15 @@ export default function ChatList() {
   // دریافت چت‌ها از سرور از طریق WebSocket
   useEffect(() => {
     if (!socket) return;
-    socket.on('chatList', (chats: Chat[]) => {
-      setChats(chats);
+    socket.on('chatList', (chatsData: Chat[]) => {
+      setChats(chatsData);
     });
-    socket.on('newMessage', (message) => {
-      setChats((prevChats) => {
-        const updated = [...prevChats];
-        const index = updated.findIndex((chat) => chat.id === message.roomId);
-        if (index !== -1) {
-          const chat = updated[index];
-          chat.lastMessage = message;
-          chat.unreadCount = (chat.unreadCount || 0) + 1;
-          // انتقال به بالا
-          updated.splice(index, 1);
-          return [chat, ...updated];
-        }
-        return prevChats;
-      });
-    });
+
   
 
   }, [socket]);
 
+  
   return (
     <>
       {/* جستجو */}
@@ -82,10 +69,10 @@ export default function ChatList() {
         ) : (
           filteredChats.map((chat) => {
             const isPv = chat.type === ChatTypeEnum.PV;
-            const chatLink = isPv ? `/pv/${chat.reciveer.id}` : `/group/${chat.id}`;
-            const displayName = isPv ? chat.reciveer.fullName : chat.name;
+            const chatLink = isPv ? `/pv/${chat?.receiver?.id}` : `/group/${chat.id}`;
+            const displayName = isPv ? chat?.receiver?.fullName : chat.name;
             const avatarText = isPv
-              ? chat.reciveer.fullName.charAt(0).toUpperCase()
+              ? chat?.receiver?.fullName.charAt(0).toUpperCase()
               : chat.name.charAt(0).toUpperCase();
 
             return (
@@ -95,11 +82,11 @@ export default function ChatList() {
                     <div className="w-12 h-12 rounded-full bg-[#4082bc] flex-shrink-0 flex items-center justify-center text-white font-bold">
                       {isPv ? (
                         // استفاده از تصویر پروفایل در حالت PV
-                        chat.reciveer.avatar ? (
+                        chat?.receiver?.avatar ? (
                           <Image
                           width={100}
                           height={100}
-                            src={formatImageUrl(chat.reciveer.avatar)}
+                            src={formatImageUrl(chat.receiver.avatar)}
                             alt="User Avatar"
                             className="w-12 h-12 rounded-full object-cover"
                           />
@@ -110,7 +97,7 @@ export default function ChatList() {
                         avatarText
                       )}
                     </div>
-                    {isPv && chat.reciveer.isOnline && (
+                    {isPv && chat?.reciveer?.isOnline && (
                       <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]"></div>
                     )}
                   </div>

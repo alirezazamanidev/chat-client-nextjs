@@ -12,12 +12,13 @@ export default function Header(){
     useEffect(()=>{
         if(!socket) return
 
-        socket.on('pvRoomInfo',(data:{receiver:User})=>{
-            setreciver(data.receiver)
+        socket.on('roomInfo',(receiver:User)=>{
+       
+            setreciver(receiver)
         })
         
         return ()=>{
-            socket.off('pvRoomInfo')
+            socket.off('roomInfo')
         }
     },[socket])
   const ChatAvatar = useMemo(() => {
